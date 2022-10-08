@@ -24,7 +24,7 @@ data "aws_ami" "ubuntu" {
   owners = ["099720109477"]
 }
 
-#Define the VPC 
+#Define the VPC
 resource "aws_vpc" "vpc" {
   cidr_block = var.vpc_cidr
 
@@ -140,5 +140,17 @@ resource "aws_instance" "web_server" {                            # BLOCK
   subnet_id     = aws_subnet.public_subnets["public_subnet_1"].id # Argument with value as expression
   tags = {
     Name = "Web EC2 Server"
+  }
+}
+
+resource "aws_subnet" "variable-subnet" {
+  vpc_id = aws_vpc.vpc.id
+  cidr_block = var.variables_sub_cidr
+  availability_zone = var.variables_sub_az
+  map_public_ip_on_launch = var.variables_sub_auto_ip
+
+  tags = {
+    Name = "sub-variables-${var.variables_sub_az}"
+    Terraform = "true"
   }
 }

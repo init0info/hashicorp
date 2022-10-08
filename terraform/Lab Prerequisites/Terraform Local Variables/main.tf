@@ -15,11 +15,17 @@ locals {
   server_name = "ec2-${var.environment}-api-${var.variables_sub_az}"
 }
 
+locals {
+  service_name = "Automation"
+  app_team = "Cloud Team"
+  createdby = "terraform"
+}
+
 #Retrieve the list of AZs in the current AWS region
 data "aws_availability_zones" "available" {}
 data "aws_region" "current" {}
 
-#Define the VPC 
+#Define the VPC
 resource "aws_vpc" "vpc" {
   cidr_block = var.vpc_cidr
 

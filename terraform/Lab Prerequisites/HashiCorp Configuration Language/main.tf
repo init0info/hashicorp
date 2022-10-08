@@ -7,7 +7,7 @@ provider "aws" {
 data "aws_availability_zones" "available" {}
 data "aws_region" "current" {}
 
-#Define the VPC 
+#Define the VPC
 resource "aws_vpc" "vpc" {
   cidr_block = var.vpc_cidr
 
@@ -113,5 +113,16 @@ resource "aws_nat_gateway" "nat_gateway" {
   subnet_id     = aws_subnet.public_subnets["public_subnet_1"].id
   tags = {
     Name = "demo_nat_gateway"
+  }
+}
+
+resource "aws_instance" "web" {
+  ami                    = "ami-026b57f3c383c2eec"
+  instance_type          = "t2.micro"
+  subnet_id              = aws_subnet.public_subnets["public_subnet_1"].id
+  vpc_security_group_ids = ["sg-09b106be7a7f118ee"]
+
+  tags = {
+    "Identity" = "web1"
   }
 }

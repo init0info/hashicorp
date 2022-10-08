@@ -8,9 +8,9 @@ output "vpc_id" {
   value       = aws_vpc.vpc.id
 }
 
-output "public_url" {
+output "webapp_uri" {
   description = "Public URL for our Web Server"
-  value       = "https://${aws_instance.web_server.private_ip}:8080/index.html"
+  value       = "http://${aws_instance.ubuntu_server.public_ip}/index.html"
 }
 
 output "vpc_information" {

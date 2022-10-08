@@ -30,7 +30,7 @@ data "aws_ami" "ubuntu" {
   owners = ["099720109477"]
 }
 
-#Define the VPC 
+#Define the VPC
 resource "aws_vpc" "vpc" {
   cidr_block = var.vpc_cidr
 
@@ -140,12 +140,47 @@ resource "aws_nat_gateway" "nat_gateway" {
 }
 
 # Terraform Resource Block - To Build EC2 instance in Public Subnet
-resource "aws_instance" "web_server" {                            # BLOCK
-  ami           = data.aws_ami.ubuntu.id                          # Argument with data expression
-  instance_type = "t2.micro"                                      # Argument
-  subnet_id     = aws_subnet.public_subnets["public_subnet_1"].id # Argument with value as expression
+# resource "aws_instance" "web_server" {                            # BLOCK
+#   ami           = data.aws_ami.ubuntu.id                          # Argument with data expression
+#   instance_type = "t2.micro"                                      # Argument
+#   subnet_id     = aws_subnet.public_subnets["public_subnet_1"].id # Argument with value as expression
+#   tags = {
+#     Name = "Web EC2 Server"
+#   }
+# }
+
+resource "aws_instance" "ubuntu_server" {
+  ami             = data.aws_ami.ubuntu.id
+  instance_type   = "t2.micro"
+  subnet_id       = aws_subnet.public_subnets["public_subnet_1"].id
+  security_groups = [aws_security_group.ingress-ssh.id, aws_security_group.vpc-web.id, aws_security_group.vpc-ping.id]
+  associate_public_ip_address = true
+  key_name                    = aws_key_pair.generated_aws_key_pair.key_name
+
+  connection {
+    user        = "ubuntu"
+    private_key = tls_private_key.generated_key.private_key_pem
+    host        = self.public_ip
+  }
+
   tags = {
-    Name = "Web EC2 Server"
+    Name = "Provisioned Ubuntu EC2 Server"
+  }
+
+  lifecycle {
+    ignore_changes = [security_groups]
+  }
+
+  provisioner "local-exec" {
+    command = "chmod 600 ${local_file.private_key_pem.filename}"
+  }
+
+  provisioner "remote-exec" {
+    inline = [
+      "sudo rm -rf /tmp",
+      "sudo git clone https://github.com/hashicorp/demo-terraform-101 /tmp",
+      "sudo sh /tmp/assets/setup-web.sh"
+    ]
   }
 }
 
@@ -160,3 +195,97 @@ resource "aws_subnet" "variables-subnet" {
     Terraform = "true"
   }
 }
+
+resource "tls_private_key" "generated_key" {
+  algorithm = "RSA"
+}
+
+resource "local_file" "private_key_pem" {
+  content  = tls_private_key.generated_key.private_key_pem
+  filename = "MyAWSKEy.pem"
+}
+
+resource "aws_key_pair" "generated_aws_key_pair" {
+  key_name   = "MyAWSKEy"
+  public_key = tls_private_key.generated_key.public_key_openssh
+
+  lifecycle {
+    ignore_changes = [key_name]
+  }
+}
+
+# Security Groups
+resource "aws_security_group" "ingress-ssh" {
+  name   = "allow-all-ssh"
+  vpc_id = aws_vpc.vpc.id
+  ingress {
+    cidr_blocks = ["0.0.0.0/0"]
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+  }
+
+  // Terraform removes the default rule
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
+resource "aws_security_group" "vpc-web" {
+  name        = "vpc-web-${terraform.workspace}"
+  vpc_id      = aws_vpc.vpc.id
+  description = "web traffic"
+  ingress {
+    description = "Allow http"
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    description = "Allow HTTPS"
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    description = "Allow all ip out"
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
+resource "aws_security_group" "vpc-ping" {
+  name        = "vpc-ping"
+  vpc_id      = aws_vpc.vpc.id
+  description = "ICMP for Ping"
+  ingress {
+    description = "Allow ICMP"
+    from_port   = -1
+    to_port     = -1
+    protocol    = "icmp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+  egress {
+    description = "Allow outbound ip"
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
+# resource "aws_instance" "aws_linux" {
+#   ami             = data.aws_ami.ubuntu.id
+#   instance_type   = "t2.micro"
+#   subnet_id       = aws_subnet.public_subnets["public_subnet_1"].id
+#   security_groups = [aws_security_group.ingress-ssh.id, aws_security_group.vpc-web.id, aws_security_group.vpc-ping.id]
+# }

@@ -1,6 +1,6 @@
 # Configure the AWS Provider
 provider "aws" {
-  region = "us-east-1"
+  region                   = "us-east-1"
 }
 
 #Retrieve the list of AZs in the current AWS region
@@ -24,7 +24,7 @@ data "aws_ami" "ubuntu" {
   owners = ["099720109477"]
 }
 
-#Define the VPC 
+#Define the VPC
 resource "aws_vpc" "vpc" {
   cidr_block = var.vpc_cidr
 
@@ -141,4 +141,41 @@ resource "aws_instance" "web_server" {                            # BLOCK
   tags = {
     Name = "Web EC2 Server"
   }
+}
+
+resource "aws_s3_bucket" "my-new-s3-bucket" {
+  bucket = "my-bucket-${lower(random_id.randomness.id)}"
+
+  tags = {
+    Name    = "Stans S3 Bucket"
+    Purpose = "Mastering Terraform"
+  }
+}
+
+resource "aws_s3_bucket_acl" "my-bucket-acl" {
+  bucket = aws_s3_bucket.my-new-s3-bucket.id
+  acl    = "private"
+}
+
+resource "aws_security_group" "my-new-security-group" {
+  name = "web_server_inbound"
+  description = "Allow https"
+  vpc_id = aws_vpc.vpc.id
+
+  ingress {
+    description = "Allow https in"
+    from_port = 443
+    to_port = 443
+    protocol = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name = "https inbound"
+    Purpose = "Intro to resource block lab"
+  }
+}
+
+resource "random_id" "randomness" {
+  byte_length = 4
 }

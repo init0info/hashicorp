@@ -1,6 +1,10 @@
 terraform {
-  backend "local" {
-    path = "terraform.tfstate"
+  backend "remote" {
+    hostname     = "app.terraform.io"
+    organization = "www-prd"
+    workspaces {
+      name = "udemy"
+    }
   }
   required_version = ">= 1.0.0"
   required_providers {
